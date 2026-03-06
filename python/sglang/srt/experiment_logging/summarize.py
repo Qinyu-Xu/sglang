@@ -79,8 +79,10 @@ def generate_summary_for_run(run_dir: str | Path) -> dict[str, Any]:
 def _compute_group_metrics(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
     items = list(records)
     total_count = len(items)
-    success_count = sum(1 for r in items if str(r.get("status")) == "success")
-    error_count = sum(1 for r in items if str(r.get("status")) == "error")
+    success_count = sum(1 for r in items if _normalized_status(r) == "success")
+    timeout_count = sum(1 for r in items if _normalized_status(r) == "timeout")
+    error_only_count = sum(1 for r in items if _normalized_status(r) == "error")
+    error_count = error_only_count + timeout_count
     ttft_values = _compute_ttft_values(items)
     completion_values = _compute_completion_values(items)
 
@@ -88,6 +90,7 @@ def _compute_group_metrics(records: Iterable[Mapping[str, Any]]) -> dict[str, An
         "total_request_count": total_count,
         "success_count": success_count,
         "error_count": error_count,
+        "timeout_count": timeout_count,
         "ttft_seconds": _percentile_block(ttft_values),
         "completion_latency_seconds": _percentile_block(completion_values),
     }
@@ -145,6 +148,10 @@ def _as_float(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _normalized_status(record: Mapping[str, Any]) -> str:
+    return str(record.get("status", "")).lower()
 
 
 def _build_cli() -> argparse.ArgumentParser:

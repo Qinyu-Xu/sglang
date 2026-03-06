@@ -1,0 +1,41 @@
+{
+  "workload_name": "baseline_mixed_small_v1",
+  "requests": [
+    {
+      "request_id": "req_0000",
+      "class_label": "short_req",
+      "prompt_text": "Give one sentence on dynamic batching.",
+      "submit_time_offset": 0.00,
+      "max_new_tokens": 48,
+      "target_output_len": 48,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0001",
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Compare FIFO and shortest-job-first scheduling for mixed LLM request lengths and explain tradeoffs step by step.",
+      "submit_time_offset": 0.05,
+      "max_new_tokens": 256,
+      "target_output_len": 256,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0002",
+      "class_label": "short_req",
+      "prompt_text": "Define TTFT in one sentence.",
+      "submit_time_offset": 0.10,
+      "max_new_tokens": 32,
+      "target_output_len": 32,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0003",
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Provide a detailed analysis of fairness implications when short and long requests share one GPU inference queue.",
+      "submit_time_offset": 0.15,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    }
+  ]
+}

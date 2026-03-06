@@ -13,10 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-try:
-    from .logger import ExperimentLogger
-except ImportError:  # pragma: no cover - allows direct script execution
-    from logger import ExperimentLogger
+from logger import DEFAULT_RESULTS_DIR, ExperimentLogger
 
 
 @dataclass(frozen=True)
@@ -39,7 +36,7 @@ def replay_trace(
     endpoint: str = "http://127.0.0.1:30000",
     model_path: str = "NousResearch/Meta-Llama-3-8B-Instruct",
     concurrency: int = 4,
-    base_dir: str | Path = "results",
+    base_dir: str | Path = DEFAULT_RESULTS_DIR,
 ) -> Path:
     """Replay workload requests against endpoint with controlled concurrency."""
     if concurrency <= 0:
@@ -263,7 +260,7 @@ def _build_cli() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--base-dir",
-        default="results",
+        default=str(DEFAULT_RESULTS_DIR),
         help="Base directory for run_YYYYMMDD_HHMMSS output folders.",
     )
     return parser

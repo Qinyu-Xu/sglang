@@ -36,6 +36,18 @@ OPTIONAL_REQUEST_FIELDS = (
 VALID_STATUSES = {"success", "error", "timeout"}
 
 
+def get_default_results_dir() -> Path:
+    """Return stable default results directory under the repo's sglang root."""
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if (parent / "python").is_dir() and (parent / "docs").exists():
+            return parent / "results"
+    return Path.cwd() / "results"
+
+
+DEFAULT_RESULTS_DIR = get_default_results_dir()
+
+
 @dataclass(frozen=True)
 class ExperimentLogger:
     """Logger that writes experiment artifacts to a single run directory."""
@@ -46,8 +58,10 @@ class ExperimentLogger:
     summary_path: Path
 
     @classmethod
-    def init_run(cls, base_dir: str | Path = "results") -> "ExperimentLogger":
+    def init_run(cls, base_dir: str | Path | None = None) -> "ExperimentLogger":
         """Create a timestamped run directory under the base results directory."""
+        if base_dir is None:
+            base_dir = DEFAULT_RESULTS_DIR
         run_dir: Path | None = None
         for _ in range(3):
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

@@ -1,0 +1,813 @@
+{
+  "workload_name": "baseline_mixed_40_v1",
+  "model_path": "NousResearch/Meta-Llama-3-8B-Instruct",
+  "endpoint": "http://127.0.0.1:30000",
+  "concurrency": 4,
+  "total_request_count": 80,
+  "prompt_templates": {
+    "short_req": "Give a concise answer in 1-2 sentences: {topic}",
+    "long_reasoning_req": "Reason step by step and provide a detailed analysis: {topic}"
+  },
+  "requests": [
+    {
+      "request_id": "req_0000",
+      "request_order": 0,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What is TTFT in LLM serving?",
+      "submit_time_offset": 0.0,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0001",
+      "request_order": 1,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Explain fairness risks when short and long jobs share one GPU.",
+      "submit_time_offset": 0.05,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0002",
+      "request_order": 2,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What does queueing delay mean?",
+      "submit_time_offset": 0.1,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0003",
+      "request_order": 3,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Discuss tradeoffs between throughput optimization and latency fairness.",
+      "submit_time_offset": 0.15,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0004",
+      "request_order": 4,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why can short requests suffer in mixed workloads?",
+      "submit_time_offset": 0.2,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0005",
+      "request_order": 5,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Compare FIFO vs shortest-job-first for mixed request sizes.",
+      "submit_time_offset": 0.25,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0006",
+      "request_order": 6,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why does batching improve throughput?",
+      "submit_time_offset": 0.3,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0007",
+      "request_order": 7,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Analyze how concurrency affects tail latency for long outputs.",
+      "submit_time_offset": 0.35,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0008",
+      "request_order": 8,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: When does prefill dominate latency?",
+      "submit_time_offset": 0.4,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0009",
+      "request_order": 9,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Describe how admission control can protect short requests.",
+      "submit_time_offset": 0.45,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0010",
+      "request_order": 10,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What is TTFT in LLM serving?",
+      "submit_time_offset": 0.5,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0011",
+      "request_order": 11,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Explain fairness risks when short and long jobs share one GPU.",
+      "submit_time_offset": 0.55,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0012",
+      "request_order": 12,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What does queueing delay mean?",
+      "submit_time_offset": 0.6,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0013",
+      "request_order": 13,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Discuss tradeoffs between throughput optimization and latency fairness.",
+      "submit_time_offset": 0.65,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0014",
+      "request_order": 14,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why can short requests suffer in mixed workloads?",
+      "submit_time_offset": 0.7,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0015",
+      "request_order": 15,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Compare FIFO vs shortest-job-first for mixed request sizes.",
+      "submit_time_offset": 0.75,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0016",
+      "request_order": 16,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why does batching improve throughput?",
+      "submit_time_offset": 0.8,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0017",
+      "request_order": 17,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Analyze how concurrency affects tail latency for long outputs.",
+      "submit_time_offset": 0.85,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0018",
+      "request_order": 18,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: When does prefill dominate latency?",
+      "submit_time_offset": 0.9,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0019",
+      "request_order": 19,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Describe how admission control can protect short requests.",
+      "submit_time_offset": 0.95,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0020",
+      "request_order": 20,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What is TTFT in LLM serving?",
+      "submit_time_offset": 1.0,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0021",
+      "request_order": 21,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Explain fairness risks when short and long jobs share one GPU.",
+      "submit_time_offset": 1.05,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0022",
+      "request_order": 22,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What does queueing delay mean?",
+      "submit_time_offset": 1.1,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0023",
+      "request_order": 23,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Discuss tradeoffs between throughput optimization and latency fairness.",
+      "submit_time_offset": 1.15,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0024",
+      "request_order": 24,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why can short requests suffer in mixed workloads?",
+      "submit_time_offset": 1.2,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0025",
+      "request_order": 25,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Compare FIFO vs shortest-job-first for mixed request sizes.",
+      "submit_time_offset": 1.25,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0026",
+      "request_order": 26,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why does batching improve throughput?",
+      "submit_time_offset": 1.3,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0027",
+      "request_order": 27,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Analyze how concurrency affects tail latency for long outputs.",
+      "submit_time_offset": 1.35,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0028",
+      "request_order": 28,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: When does prefill dominate latency?",
+      "submit_time_offset": 1.4,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0029",
+      "request_order": 29,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Describe how admission control can protect short requests.",
+      "submit_time_offset": 1.45,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0030",
+      "request_order": 30,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What is TTFT in LLM serving?",
+      "submit_time_offset": 1.5,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0031",
+      "request_order": 31,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Explain fairness risks when short and long jobs share one GPU.",
+      "submit_time_offset": 1.55,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0032",
+      "request_order": 32,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What does queueing delay mean?",
+      "submit_time_offset": 1.6,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0033",
+      "request_order": 33,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Discuss tradeoffs between throughput optimization and latency fairness.",
+      "submit_time_offset": 1.65,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0034",
+      "request_order": 34,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why can short requests suffer in mixed workloads?",
+      "submit_time_offset": 1.7,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0035",
+      "request_order": 35,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Compare FIFO vs shortest-job-first for mixed request sizes.",
+      "submit_time_offset": 1.75,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0036",
+      "request_order": 36,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why does batching improve throughput?",
+      "submit_time_offset": 1.8,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0037",
+      "request_order": 37,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Analyze how concurrency affects tail latency for long outputs.",
+      "submit_time_offset": 1.85,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0038",
+      "request_order": 38,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: When does prefill dominate latency?",
+      "submit_time_offset": 1.9,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0039",
+      "request_order": 39,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Describe how admission control can protect short requests.",
+      "submit_time_offset": 1.95,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0040",
+      "request_order": 40,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What is TTFT in LLM serving?",
+      "submit_time_offset": 2.0,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0041",
+      "request_order": 41,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Explain fairness risks when short and long jobs share one GPU.",
+      "submit_time_offset": 2.05,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0042",
+      "request_order": 42,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What does queueing delay mean?",
+      "submit_time_offset": 2.1,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0043",
+      "request_order": 43,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Discuss tradeoffs between throughput optimization and latency fairness.",
+      "submit_time_offset": 2.15,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0044",
+      "request_order": 44,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why can short requests suffer in mixed workloads?",
+      "submit_time_offset": 2.2,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0045",
+      "request_order": 45,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Compare FIFO vs shortest-job-first for mixed request sizes.",
+      "submit_time_offset": 2.25,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0046",
+      "request_order": 46,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why does batching improve throughput?",
+      "submit_time_offset": 2.3,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0047",
+      "request_order": 47,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Analyze how concurrency affects tail latency for long outputs.",
+      "submit_time_offset": 2.35,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0048",
+      "request_order": 48,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: When does prefill dominate latency?",
+      "submit_time_offset": 2.4,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0049",
+      "request_order": 49,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Describe how admission control can protect short requests.",
+      "submit_time_offset": 2.45,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0050",
+      "request_order": 50,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What is TTFT in LLM serving?",
+      "submit_time_offset": 2.5,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0051",
+      "request_order": 51,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Explain fairness risks when short and long jobs share one GPU.",
+      "submit_time_offset": 2.55,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0052",
+      "request_order": 52,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What does queueing delay mean?",
+      "submit_time_offset": 2.6,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0053",
+      "request_order": 53,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Discuss tradeoffs between throughput optimization and latency fairness.",
+      "submit_time_offset": 2.65,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0054",
+      "request_order": 54,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why can short requests suffer in mixed workloads?",
+      "submit_time_offset": 2.7,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0055",
+      "request_order": 55,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Compare FIFO vs shortest-job-first for mixed request sizes.",
+      "submit_time_offset": 2.75,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0056",
+      "request_order": 56,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why does batching improve throughput?",
+      "submit_time_offset": 2.8,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0057",
+      "request_order": 57,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Analyze how concurrency affects tail latency for long outputs.",
+      "submit_time_offset": 2.85,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0058",
+      "request_order": 58,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: When does prefill dominate latency?",
+      "submit_time_offset": 2.9,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0059",
+      "request_order": 59,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Describe how admission control can protect short requests.",
+      "submit_time_offset": 2.95,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0060",
+      "request_order": 60,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What is TTFT in LLM serving?",
+      "submit_time_offset": 3.0,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0061",
+      "request_order": 61,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Explain fairness risks when short and long jobs share one GPU.",
+      "submit_time_offset": 3.05,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0062",
+      "request_order": 62,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What does queueing delay mean?",
+      "submit_time_offset": 3.1,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0063",
+      "request_order": 63,
+      "class_label": "long_reasoning_req",
+      "prompt_text": "Reason step by step and provide a detailed analysis: Discuss tradeoffs between throughput optimization and latency fairness.",
+      "submit_time_offset": 3.15,
+      "max_new_tokens": 320,
+      "target_output_len": 320,
+      "prompt_type": "reasoning"
+    },
+    {
+      "request_id": "req_0064",
+      "request_order": 64,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why can short requests suffer in mixed workloads?",
+      "submit_time_offset": 3.2,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0065",
+      "request_order": 65,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What is TTFT in LLM serving?",
+      "submit_time_offset": 3.25,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0066",
+      "request_order": 66,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why does batching improve throughput?",
+      "submit_time_offset": 3.3,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0067",
+      "request_order": 67,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What does queueing delay mean?",
+      "submit_time_offset": 3.35,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0068",
+      "request_order": 68,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: When does prefill dominate latency?",
+      "submit_time_offset": 3.4,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0069",
+      "request_order": 69,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why can short requests suffer in mixed workloads?",
+      "submit_time_offset": 3.45,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0070",
+      "request_order": 70,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What is TTFT in LLM serving?",
+      "submit_time_offset": 3.5,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0071",
+      "request_order": 71,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why does batching improve throughput?",
+      "submit_time_offset": 3.55,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0072",
+      "request_order": 72,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What does queueing delay mean?",
+      "submit_time_offset": 3.6,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0073",
+      "request_order": 73,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: When does prefill dominate latency?",
+      "submit_time_offset": 3.65,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0074",
+      "request_order": 74,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why can short requests suffer in mixed workloads?",
+      "submit_time_offset": 3.7,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0075",
+      "request_order": 75,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What is TTFT in LLM serving?",
+      "submit_time_offset": 3.75,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0076",
+      "request_order": 76,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why does batching improve throughput?",
+      "submit_time_offset": 3.8,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0077",
+      "request_order": 77,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: What does queueing delay mean?",
+      "submit_time_offset": 3.85,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0078",
+      "request_order": 78,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: When does prefill dominate latency?",
+      "submit_time_offset": 3.9,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    },
+    {
+      "request_id": "req_0079",
+      "request_order": 79,
+      "class_label": "short_req",
+      "prompt_text": "Give a concise answer in 1-2 sentences: Why can short requests suffer in mixed workloads?",
+      "submit_time_offset": 3.95,
+      "max_new_tokens": 64,
+      "target_output_len": 64,
+      "prompt_type": "chat"
+    }
+  ]
+}

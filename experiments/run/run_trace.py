@@ -56,7 +56,6 @@ class TraceRequest:
     submit_time_offset: float
     max_new_tokens: int
     prompt_type: str
-    target_output_len: int
 
 
 # ---------------------------------------------------------------------------
@@ -167,9 +166,6 @@ def _read_workload_spec(path: str | Path) -> tuple[str, list[TraceRequest]]:
         max_new_tokens = _as_int(
             raw.get("max_new_tokens", 64), name="max_new_tokens"
         )
-        target_output_len = _as_int(
-            raw.get("target_output_len", max_new_tokens), name="target_output_len"
-        )
         prompt_type = str(
             raw.get("prompt_type", "reasoning" if "long" in class_label else "chat")
         )
@@ -184,7 +180,6 @@ def _read_workload_spec(path: str | Path) -> tuple[str, list[TraceRequest]]:
                 submit_time_offset=submit_time_offset,
                 max_new_tokens=max_new_tokens,
                 prompt_type=prompt_type,
-                target_output_len=target_output_len,
             )
         )
     return workload_name, requests
@@ -283,7 +278,6 @@ def _send_one_request(
         # Token counts
         "prompt_len": len(request.prompt_text.split()),
         "output_len": output_token_count,
-        "target_output_len": request.target_output_len,
         "max_new_tokens": request.max_new_tokens,
         # Status
         "status": status,

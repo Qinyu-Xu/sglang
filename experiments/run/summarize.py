@@ -9,11 +9,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-try:
-    from .logger import REQUESTS_FILE, SUMMARY_FILE
-except ImportError:  # pragma: no cover - allows direct script execution
-    from sglang.experiments.run.logger import REQUESTS_FILE, SUMMARY_FILE
-
+from logger import REQUESTS_FILE, SUMMARY_FILE
 
 def read_requests_jsonl(requests_path: str | Path) -> list[dict[str, Any]]:
     """Read newline-delimited request records from a jsonl file."""

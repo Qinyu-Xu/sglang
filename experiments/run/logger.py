@@ -28,7 +28,6 @@ REQUIRED_REQUEST_FIELDS = (
 )
 
 OPTIONAL_REQUEST_FIELDS = (
-    "target_output_len",
     "max_new_tokens_per_request",
     "prompt_type",
 )

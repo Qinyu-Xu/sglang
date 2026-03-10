@@ -36,7 +36,6 @@ The output JSON contains a flat list of requests, each with:
   - prompt_text:         The actual prompt string
   - submit_time_offset:  Seconds after experiment start to submit this request
   - max_new_tokens:      Hard cap on output length (128 for short, 8192 for long)
-  - target_output_len:   Sampled expected output length (for oracle estimator)
   - prompt_type:         "chat" or "reasoning"
 
 The client driver should:
@@ -64,7 +63,6 @@ To sweep load factor, generate multiple workloads with different
 
 import argparse
 import json
-import math
 import os
 import numpy as np
 
@@ -129,18 +127,6 @@ PROMPT_TEMPLATES = {
 # Sampling helpers
 # ---------------------------------------------------------------------------
 
-def sample_short_output_len(rng: np.random.Generator) -> int:
-    """Short output: Uniform[40, 80] tokens."""
-    return int(rng.integers(40, 81))
-
-
-def sample_long_output_len(rng: np.random.Generator) -> int:
-    """Long output: LogNormal(mean≈1500, std≈1000), clipped to [512, 4096]."""
-    mu = math.log(1500**2 / math.sqrt(1500**2 + 1000**2))
-    sigma = math.sqrt(math.log(1 + (1000 / 1500) ** 2))
-    val = rng.lognormal(mean=mu, sigma=sigma)
-    return int(np.clip(round(val), 512, 4096))
-
 
 def sample_poisson_offsets(n: int, arrival_rate: float, rng: np.random.Generator) -> list[float]:
     """
@@ -158,6 +144,19 @@ def sample_poisson_offsets(n: int, arrival_rate: float, rng: np.random.Generator
     return [round(float(t), 3) for t in offsets]
 
 
+def uniform_offsets(n: int, arrival_rate: float) -> list[float]:
+    """
+    Generate evenly spaced arrival times.
+
+    Inter-arrival = 1/λ exactly. First request at t=0.
+    Useful for profiling where you want deterministic, isolated requests.
+    """
+    if n <= 0:
+        return []
+    gap = 1.0 / arrival_rate
+    return [round(i * gap, 3) for i in range(n)]
+
+
 # ---------------------------------------------------------------------------
 # Core generation
 # ---------------------------------------------------------------------------
@@ -169,6 +168,7 @@ def generate_workload(
     seed: int,
     model_path: str,
     endpoint: str,
+    arrival_mode: str = "poisson",
 ) -> dict:
     rng = np.random.default_rng(seed)
 
@@ -180,8 +180,11 @@ def generate_workload(
     indices = rng.permutation(total_requests)
     ordered_labels = [labels[i] for i in indices]
 
-    # Generate Poisson arrival times
-    offsets = sample_poisson_offsets(total_requests, arrival_rate, rng)
+    # Generate arrival times
+    if arrival_mode == "uniform":
+        offsets = uniform_offsets(total_requests, arrival_rate)
+    else:
+        offsets = sample_poisson_offsets(total_requests, arrival_rate, rng)
 
     # Build request list
     requests = []
@@ -189,14 +192,12 @@ def generate_workload(
         if label == "short":
             topic = SHORT_TOPICS[int(rng.integers(0, len(SHORT_TOPICS)))]
             prompt_text = PROMPT_TEMPLATES["short"].format(topic=topic)
-            target_output_len = sample_short_output_len(rng)
             max_new_tokens = 128
             prompt_type = "chat"
         else:
             topic = REASONING_TOPICS[int(rng.integers(0, len(REASONING_TOPICS)))]
             prompt_text = PROMPT_TEMPLATES["long"].format(topic=topic)
-            target_output_len = sample_long_output_len(rng)
-            max_new_tokens = 8192
+            max_new_tokens = 32768
             prompt_type = "reasoning"
 
         requests.append({
@@ -206,7 +207,6 @@ def generate_workload(
             "prompt_text": prompt_text,
             "submit_time_offset": offsets[i],
             "max_new_tokens": max_new_tokens,
-            "target_output_len": target_output_len,
             "prompt_type": prompt_type,
         })
 
@@ -219,9 +219,6 @@ def generate_workload(
         pct = int(round(long_fraction * 100))
         workload_name = f"bimodal_{pct}pct_long"
 
-    # Compute summary stats for the header
-    short_targets = [r["target_output_len"] for r in requests if r["class_label"] == "short"]
-    long_targets = [r["target_output_len"] for r in requests if r["class_label"] == "long"]
     duration = max(r["submit_time_offset"] for r in requests) if requests else 0.0
 
     return {
@@ -243,8 +240,6 @@ def generate_workload(
         "summary": {
             "duration_seconds": round(duration, 1),
             "mean_inter_arrival_seconds": round(1.0 / arrival_rate, 3),
-            "short_output_len_mean": round(sum(short_targets) / len(short_targets), 1) if short_targets else None,
-            "long_output_len_mean": round(sum(long_targets) / len(long_targets), 1) if long_targets else None,
         },
 
         "requests": requests,
@@ -262,20 +257,15 @@ def print_summary(workload: dict) -> None:
     print(f"  Requests:       {p['total_requests']} ({p['n_short']} short + {p['n_long']} long)")
     print(f"  Arrival rate:   {p['arrival_rate_rps']} req/s (mean gap: {s['mean_inter_arrival_seconds']}s)")
     print(f"  Duration:       ~{s['duration_seconds']}s")
-    if s["short_output_len_mean"]:
-        print(f"  Short output:   mean {s['short_output_len_mean']} tokens")
-    if s["long_output_len_mean"]:
-        print(f"  Long output:    mean {s['long_output_len_mean']} tokens")
 
     # Show first 10 requests
-    print(f"\n  {'#':<5} {'t(s)':<10} {'class':<8} {'target_out':<12} {'max_tokens':<10}")
-    print(f"  {'-'*5} {'-'*10} {'-'*8} {'-'*12} {'-'*10}")
+    print(f"\n  {'#':<5} {'t(s)':<10} {'class':<8} {'max_tokens':<10}")
+    print(f"  {'-'*5} {'-'*10} {'-'*8} {'-'*10}")
     for req in workload["requests"][:10]:
         print(
             f"  {req['request_order']:<5} "
             f"{req['submit_time_offset']:<10.3f} "
             f"{req['class_label']:<8} "
-            f"{req['target_output_len']:<12} "
             f"{req['max_new_tokens']:<10}"
         )
     if len(workload["requests"]) > 10:
@@ -316,6 +306,8 @@ Examples:
     parser.add_argument("--arrival-rate", type=float, required=True,
                         help="Mean arrival rate in requests/second. "
                              "Use load_calculator.py to compute this from profiled values.")
+    parser.add_argument("--arrival-mode", choices=["poisson", "uniform"], default="poisson",
+                        help="Arrival process: poisson (random, default) or uniform (deterministic equal spacing).")
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed (default: 42)")
     parser.add_argument("--model-path", type=str,
@@ -338,6 +330,7 @@ def main() -> None:
         seed=args.seed,
         model_path=args.model_path,
         endpoint=args.endpoint,
+        arrival_mode=args.arrival_mode,
     )
 
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)

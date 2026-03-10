@@ -12,7 +12,7 @@ from typing import Any, Iterable, Mapping
 try:
     from .logger import REQUESTS_FILE, SUMMARY_FILE
 except ImportError:  # pragma: no cover - allows direct script execution
-    from logger import REQUESTS_FILE, SUMMARY_FILE
+    from sglang.experiments.run.logger import REQUESTS_FILE, SUMMARY_FILE
 
 
 def read_requests_jsonl(requests_path: str | Path) -> list[dict[str, Any]]:

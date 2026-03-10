@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from summarize import compute_summary, read_requests_jsonl
+from sglang.experiments.run.summarize import compute_summary, read_requests_jsonl
 
 
 @dataclass(frozen=True)

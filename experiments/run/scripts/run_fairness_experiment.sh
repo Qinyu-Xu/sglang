@@ -14,6 +14,7 @@ Fixed:
 Vary:
 1. Long-request Fraction
 2. Maybe load regime later
+3. SGLang Scheduling Policy
 
 Measure:
 1. TTFT p50/p95 by class
@@ -36,9 +37,11 @@ export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 
 REPO_ROOT="${REPO_ROOT:-/scratch/qx774/repos/project}"
 PYTHON_BIN="${PYTHON_BIN:-/scratch/qx774/conda/envs/sgl/bin/python}"
-MODEL_PATH="${MODEL_PATH:-NousResearch/Meta-Llama-3-8B-Instruct}" # [FIXED] model
+MODEL_PATH="${MODEL_PATH:-deepseek-ai/DeepSeek-R1-Distill-Llama-8B}" # [FIXED] model
 HOST="${HOST:-0.0.0.0}"
-PORT="${PORT:-30000}"
+# Default port is UID-derived to avoid collisions on shared compute nodes.
+# Override with: PORT=XXXXX bash run_fairness_experiment.sh
+PORT="${PORT:-$((30000 + UID % 10000))}"
 ENDPOINT="${ENDPOINT:-http://127.0.0.1:${PORT}}"
 BASE_RESULTS_DIR="${BASE_RESULTS_DIR:-${REPO_ROOT}/sglang/results}"
 WORKLOAD_DIR="${WORKLOAD_DIR:-${REPO_ROOT}/sglang/experiments/serving_fairness/workloads}"
@@ -63,24 +66,32 @@ RUN_DIRS=()
 SGLANG_PID=""
 
 WORKLOADS=(
-  "short_only.json"
-  "long_only.json"
-  "mixed_20.json"
-  "mixed_40.json"
+  "short_only_fixed.json"
+  "long_only_fixed.json"
+  "mixed_20_fixed.json"
+  "mixed_40_fixed.json"
 )
 # [FIXED] prompt templates + total request count are defined in workload specs
 # [VARIED] class composition / long-request fraction via workload file choice
 
 cleanup() {
   if [[ -n "${SGLANG_PID}" ]] && kill -0 "${SGLANG_PID}" 2>/dev/null; then
-    kill "${SGLANG_PID}" || true
-    wait "${SGLANG_PID}" || true
+    # Kill the entire process group to catch torch/CUDA child workers
+    kill -- "-${SGLANG_PID}" 2>/dev/null || kill "${SGLANG_PID}" || true
+    wait "${SGLANG_PID}" 2>/dev/null || true
   fi
 }
 trap cleanup EXIT
 
+if ss -tlnp 2>/dev/null | grep -q ":${PORT}"; then
+  echo "ERROR: Port ${PORT} is already in use. Kill the existing process first:"
+  echo "  pkill -9 -f sglang.launch_server"
+  echo "  # or check: ss -tlnp | grep :${PORT}"
+  exit 1
+fi
+
 echo "Starting SGLang server: ${MODEL_PATH} at ${HOST}:${PORT}"
-"${PYTHON_BIN}" -m sglang.launch_server \
+setsid "${PYTHON_BIN}" -m sglang.launch_server \
   --model-path "${MODEL_PATH}" \
   --host "${HOST}" \
   --port "${PORT}" \
@@ -90,15 +101,20 @@ echo "Starting SGLang server: ${MODEL_PATH} at ${HOST}:${PORT}"
   >"${SERVER_LOG}" 2>&1 &
 SGLANG_PID=$!
 
-echo "Waiting for health endpoint..."
-for i in $(seq 1 180); do
-  if curl -sf "${ENDPOINT}/health" >/dev/null; then
-    echo "Server is healthy after ${i}s"
+echo "Waiting for server to be ready for generation..."
+for i in $(seq 1 300); do
+  if curl -sf "${ENDPOINT}/health_generate" >/dev/null; then
+    echo "Server is ready after ${i}s"
     break
   fi
+  if ! kill -0 "${SGLANG_PID}" 2>/dev/null; then
+    echo "Server process (PID ${SGLANG_PID}) died unexpectedly. Last server logs:"
+    tail -n 40 "${SERVER_LOG}" || true
+    exit 1
+  fi
   sleep 1
-  if [[ "${i}" -eq 180 ]]; then
-    echo "Server failed health check. Last server logs:"
+  if [[ "${i}" -eq 300 ]]; then
+    echo "Server failed to become ready within 300s. Last server logs:"
     tail -n 120 "${SERVER_LOG}" || true
     exit 1
   fi

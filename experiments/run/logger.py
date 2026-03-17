@@ -28,8 +28,12 @@ REQUIRED_REQUEST_FIELDS = (
 )
 
 OPTIONAL_REQUEST_FIELDS = (
-    "max_new_tokens_per_request",
+    "max_new_tokens",
     "prompt_type",
+    "ttft",
+    "completion_latency",
+    "generation_time",
+    "output_text",
 )
 
 VALID_STATUSES = {"success", "error", "timeout"}
@@ -40,7 +44,7 @@ def get_default_results_dir() -> Path:
     here = Path(__file__).resolve()
     for parent in here.parents:
         if (parent / "python").is_dir() and (parent / "docs").exists():
-            return parent / "results"
+            return parent / "experiments" / "data" / "results"
     return Path.cwd() / "results"
 
 

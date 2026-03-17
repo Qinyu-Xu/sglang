@@ -295,6 +295,8 @@ class ServerArgs:
     schedule_low_priority_values_first: bool = False
     priority_scheduling_preemption_threshold: int = 10
     schedule_conservativeness: float = 1.0
+    instant_accept_chat: bool = False
+    instant_accept_chat_max_tokens: int = 512
     page_size: Optional[int] = None
     hybrid_kvcache_ratio: Optional[float] = None
     swa_full_tokens_ratio: float = 0.8
@@ -2440,6 +2442,18 @@ class ServerArgs:
             type=float,
             default=ServerArgs.schedule_conservativeness,
             help="How conservative the schedule policy is. A larger value means more conservative scheduling. Use a larger value if you see requests being retracted frequently.",
+        )
+        parser.add_argument(
+            "--instant-accept-chat",
+            action="store_true",
+            default=ServerArgs.instant_accept_chat,
+            help="Admit non-thinking (chat) requests immediately without future-token budget checks.",
+        )
+        parser.add_argument(
+            "--instant-accept-chat-max-tokens",
+            type=int,
+            default=ServerArgs.instant_accept_chat_max_tokens,
+            help="Max new tokens threshold to classify a request as chat for instant-accept (default: 512).",
         )
         parser.add_argument(
             "--page-size",

@@ -18,17 +18,17 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# Hardcoded from profiling (DeepSeek-R1-Distill-Llama-8B on A100-80GB)
+# Hardcoded from profiling (Qwen/Qwen3-8B on A100-80GB)
 #
 # Profile runs:
 #   short: run_20260310_091638  (5 isolated short reqs, 128 output tokens each)
 #   long:  run_20260310_092307  (5 isolated long reqs, mean ~1965 output tokens)
 # ---------------------------------------------------------------------------
-S_SHORT=2.72        # mean service time for short requests (seconds)
-S_LONG=43.29        # mean service time for long requests (seconds)
-KV_SHORT=140        # mean KV tokens per short request (prompt + output)
-KV_LONG=1986        # mean KV tokens per long request (prompt + output)
-C=89250             # KV cache capacity in tokens (back-calculated from profile)
+S_SHORT=0.7        # mean service time for short requests (seconds)
+S_LONG=93        # mean service time for long requests (seconds)
+KV_SHORT=43        # mean KV tokens per short request (prompt + output)
+KV_LONG=4246        # mean KV tokens per long request (prompt + output)
+C=53597             # KV cache capacity in tokens (back-calculated from profile)
 
 # ---------------------------------------------------------------------------
 # Defaults (overridable via flags)
@@ -36,7 +36,7 @@ C=89250             # KV cache capacity in tokens (back-calculated from profile)
 LONG_FRACTION=0.2
 TOTAL_REQUESTS=200
 SEED=42
-MODEL_PATH="deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+MODEL_PATH="Qwen/Qwen3-8B"
 ENDPOINT="http://127.0.0.1:30000"
 
 SCRIPT_DIR="/scratch/qx774/repos/project/sglang/experiments"

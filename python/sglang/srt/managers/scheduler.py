@@ -1777,6 +1777,8 @@ class Scheduler(
             self.chunked_prefill_size,
             running_bs if self.is_mixed_chunk else 0,
             self.priority_scheduling_preemption_threshold,
+            self.server_args.instant_accept_chat,
+            self.server_args.instant_accept_chat_max_tokens,
         )
 
         if self.chunked_req is not None:
@@ -1834,6 +1836,14 @@ class Scheduler(
                         ) > 0 or (not self.running_batch.is_empty())
                     else:
                         self.running_batch.batch_is_full = True
+                    # With instant-accept-chat: skip over blocked long requests so short
+                    # requests queued behind them are not head-of-line blocked.
+                    if (
+                        self.server_args.instant_accept_chat
+                        and req.sampling_params.max_new_tokens
+                        > self.server_args.instant_accept_chat_max_tokens
+                    ):
+                        continue
                 break
 
         # Update waiting queue

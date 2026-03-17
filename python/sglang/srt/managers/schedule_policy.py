@@ -15,8 +15,11 @@ from __future__ import annotations
 # ==============================================================================
 """Request scheduler policy"""
 
+import logging
 import os
 import random
+
+logger = logging.getLogger(__name__)
 from collections import defaultdict
 from contextlib import contextmanager
 from enum import Enum, auto
@@ -329,7 +332,11 @@ class PrefillAdder:
         rem_chunk_tokens: Optional[int],
         mixed_with_decode_tokens: int = 0,
         priority_scheduling_preemption_threshold: int = 0,
+        instant_accept_chat: bool = False,
+        instant_accept_chat_max_tokens: int = 512,
     ):
+        self.instant_accept_chat = instant_accept_chat
+        self.instant_accept_chat_max_tokens = instant_accept_chat_max_tokens
         self.page_size = page_size
         self.tree_cache = tree_cache
         self.token_to_kv_pool_allocator = token_to_kv_pool_allocator
@@ -577,6 +584,39 @@ class PrefillAdder:
             return AddReqResult.OTHER
         if req.sampling_params.ignore_eos and getattr(self.tree_cache, "disable", True):
             return self.add_one_req_ignore_eos(req, has_chunked_req)
+
+        # Fast path: non-thinking (chat) requests are admitted instantly.
+        # We skip the conservative future-token reservation and only check that
+        # the input itself fits, so short requests never stall behind long ones.
+        if self.instant_accept_chat and req.sampling_params.max_new_tokens <= self.instant_accept_chat_max_tokens:
+            real_input_tokens = self.ceil_paged_tokens(
+                req.extend_input_len - req.host_hit_length
+            )
+            if real_input_tokens >= self.rem_input_tokens and len(self.can_run_list) != 0:
+                return AddReqResult.OTHER
+            if real_input_tokens >= self.rem_total_tokens:
+                return AddReqResult.NO_TOKEN
+            with self._lock_node(req.last_node):
+                input_tokens = self.ceil_paged_tokens(req.extend_input_len)
+                if input_tokens >= self.rem_input_tokens and len(self.can_run_list) != 0:
+                    return AddReqResult.OTHER
+                if input_tokens >= self.rem_total_tokens:
+                    return AddReqResult.NO_TOKEN
+                prefix_len = len(req.prefix_indices)
+                self.can_run_list.append(req)
+                if self.is_hybrid_swa:
+                    req.swa_uuid_for_lock = self.tree_cache.inc_lock_ref(req.last_node)
+                else:
+                    self.tree_cache.inc_lock_ref(req.last_node)
+                # Reserve only input tokens — no speculative output reservation
+                self._update_prefill_budget(prefix_len, input_tokens, 0)
+                logger.info(
+                    "instant-accept-chat: rid=%s input_tokens=%d max_new_tokens=%d admitted without output reservation",
+                    req.rid,
+                    input_tokens,
+                    req.sampling_params.max_new_tokens,
+                )
+            return self.budget_state()
 
         total_tokens = req.extend_input_len + min(
             max(req.sampling_params.max_new_tokens - len(req.output_ids), 0),

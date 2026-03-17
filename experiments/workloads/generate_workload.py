@@ -197,7 +197,7 @@ def generate_workload(
         else:
             topic = REASONING_TOPICS[int(rng.integers(0, len(REASONING_TOPICS)))]
             prompt_text = PROMPT_TEMPLATES["long"].format(topic=topic)
-            max_new_tokens = 32768
+            max_new_tokens = 8192
             prompt_type = "reasoning"
 
         requests.append({
@@ -311,7 +311,7 @@ Examples:
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed (default: 42)")
     parser.add_argument("--model-path", type=str,
-                        default="deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+                        default="Qwen/Qwen3-8B",
                         help="Model path (metadata only)")
     parser.add_argument("--endpoint", type=str, default="http://127.0.0.1:30000",
                         help="Server endpoint (metadata only)")

@@ -19,10 +19,10 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # Defaults
 # ---------------------------------------------------------------------------
-NUM_REQUESTS=20
+NUM_REQUESTS=10
 SEED=42
-MODEL_PATH="deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
-ENDPOINT="http://127.0.0.1:30000"
+MODEL_PATH="Qwen/Qwen3-8B"
+ENDPOINT="http://127.0.0.1:39942"
 
 SCRIPT_DIR="/scratch/qx774/repos/project/sglang/experiments"
 OUTPUT_DIR="${SCRIPT_DIR}/data/trace"
@@ -44,8 +44,8 @@ done
 # 0.01 req/s = one request every 100 seconds.
 # Even the longest request (~300s worst case) will finish before the next arrives
 # because we're profiling, not benchmarking.
-ARRIVAL_RATE_LONG=0.01
-ARRIVAL_RATE_SHORT=0.1
+ARRIVAL_RATE_LONG=0.005
+ARRIVAL_RATE_SHORT=0.05
 
 mkdir -p "${OUTPUT_DIR}"
 

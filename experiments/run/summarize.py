@@ -60,7 +60,10 @@ def write_summary_json(summary: Mapping[str, Any], summary_path: str | Path) -> 
         f.write("\n")
 
 
-def generate_summary_for_run(run_dir: str | Path) -> dict[str, Any]:
+def generate_summary_for_run(
+    run_dir: str | Path,
+    preemptions: int | None = None,
+) -> dict[str, Any]:
     """Read requests.jsonl in run_dir, compute metrics, and write summary.json."""
     run_path = Path(run_dir)
     requests_path = run_path / REQUESTS_FILE
@@ -68,6 +71,7 @@ def generate_summary_for_run(run_dir: str | Path) -> dict[str, Any]:
 
     records = read_requests_jsonl(requests_path)
     summary = compute_summary(records)
+    summary["preemption_count"] = preemptions
     write_summary_json(summary, summary_path)
     return summary
 
@@ -81,12 +85,22 @@ def _compute_group_metrics(records: Iterable[Mapping[str, Any]]) -> dict[str, An
     error_count = error_only_count + timeout_count
     ttft_values = _compute_ttft_values(items)
     completion_values = _compute_completion_values(items)
+    mean_service_time = sum(completion_values) / len(completion_values) if completion_values else None
+
+    output_lens = [r["output_len"] for r in items if isinstance(r.get("output_len"), (int, float))]
+    prompt_lens = [r["prompt_len"] for r in items if isinstance(r.get("prompt_len"), (int, float))]
+    kv_lens = [p + o for p, o in zip(prompt_lens, output_lens)] if len(prompt_lens) == len(output_lens) else []
+    mean_output_len = sum(output_lens) / len(output_lens) if output_lens else None
+    mean_kv_len = sum(kv_lens) / len(kv_lens) if kv_lens else None
 
     return {
         "total_request_count": total_count,
         "success_count": success_count,
         "error_count": error_count,
         "timeout_count": timeout_count,
+        "mean_service_time_seconds": mean_service_time,
+        "mean_output_len_tokens": mean_output_len,
+        "mean_kv_len_tokens": mean_kv_len,
         "ttft_seconds": _percentile_block(ttft_values),
         "completion_latency_seconds": _percentile_block(completion_values),
     }

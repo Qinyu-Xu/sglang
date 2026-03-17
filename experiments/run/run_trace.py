@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from logger import DEFAULT_RESULTS_DIR, ExperimentLogger
+from summarize import generate_summary_for_run
 
 try:
     from tqdm import tqdm as _tqdm
@@ -66,9 +67,12 @@ class TraceRequest:
 def replay_trace(
     workload_spec_path: str | Path,
     endpoint: str = "http://127.0.0.1:30000",
-    model_path: str = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+    model_path: str = "Qwen/Qwen3-8B",
     timeout: int = 600,
     base_dir: str | Path = DEFAULT_RESULTS_DIR,
+    record_output: bool = False,
+    server_log: str | Path | None = None,
+    instant_accept_chat: bool = False,
 ) -> Path:
     """
     Replay workload requests against endpoint.
@@ -89,6 +93,7 @@ def replay_trace(
             "model_path": model_path,
             "timeout_seconds": timeout,
             "total_requests": len(requests),
+            "instant_accept_chat": instant_accept_chat,
         }
     )
 
@@ -98,13 +103,18 @@ def replay_trace(
 
     total = len(requests_sorted)
     result_q: queue.Queue[dict[str, Any]] = queue.Queue()
-    inflight = threading.Semaphore(0)  # tracks completions
 
     def _worker(req: TraceRequest) -> None:
         """Wait until submit time, send request, enqueue result."""
         _sleep_until_offset(run_start_ts, req.submit_time_offset)
-        record = _send_one_request(req, endpoint, model_path, timeout)
+        record = _send_one_request(req, endpoint, model_path, timeout, record_output)
         result_q.put(record)
+
+    # Snapshot server log offset before dispatch
+    server_log_start = _get_file_size(server_log)
+
+    # Snapshot preemption counter before dispatch
+    preemptions_before = _read_preemption_counter(endpoint)
 
     # Launch one thread per request — they are I/O-bound so this is fine
     run_start_ts = time.time()
@@ -130,7 +140,23 @@ def replay_trace(
         t.join(timeout=5)
 
     run_duration = time.time() - run_start_ts
-    print(f"\n[{workload_name}] Finished in {run_duration:.1f}s")
+
+    # Snapshot preemption counter after all requests complete
+    preemptions_after = _read_preemption_counter(endpoint)
+    preemptions = None
+    if preemptions_before is not None and preemptions_after is not None:
+        preemptions = int(preemptions_after - preemptions_before)
+        print(f"\n[{workload_name}] Finished in {run_duration:.1f}s  |  preemptions: {preemptions}")
+    else:
+        print(f"\n[{workload_name}] Finished in {run_duration:.1f}s  |  preemptions: unavailable")
+
+    # Copy server log slice for this run
+    _copy_log_slice(server_log, server_log_start, logger.run_dir / "server_log.txt")
+
+    # Auto-summarize
+    summary = generate_summary_for_run(logger.run_dir, preemptions=preemptions)
+    print(f"[{workload_name}] Summary written to {logger.run_dir / 'summary.json'}")
+
     return logger.run_dir
 
 
@@ -195,21 +221,26 @@ def _send_one_request(
     endpoint: str,
     model_path: str,
     timeout: int,
+    record_output: bool = False,
 ) -> dict[str, Any]:
     submit_ts = time.time()
     first_token_ts: float | None = None
     finish_ts: float | None = None
     output_token_count = 0
     output_text_chunks: list[str] = []
+    think_open = False
     status = "success"
     error_msg = ""
 
-    payload = {
+    payload: dict[str, Any] = {
         "model": model_path,
         "messages": [{"role": "user", "content": request.prompt_text}],
         "max_tokens": request.max_new_tokens,
         "stream": True,
     }
+    # Disable chain-of-thought for short/chat requests to avoid wasting KV budget
+    if request.prompt_type == "chat":
+        payload["chat_template_kwargs"] = {"enable_thinking": False}
     data = json.dumps(payload).encode("utf-8")
     request_url = endpoint.rstrip("/") + "/v1/chat/completions"
     http_request = urllib.request.Request(
@@ -233,8 +264,20 @@ def _send_one_request(
                     break
                 chunk = json.loads(data_line)
                 delta = chunk.get("choices", [{}])[0].get("delta", {})
+                think_piece = delta.get("reasoning_content")
                 token_piece = delta.get("content")
+                if think_piece:
+                    if not think_open:
+                        output_text_chunks.append("<think>")
+                        think_open = True
+                    output_text_chunks.append(str(think_piece))
+                    output_token_count += 1
+                    if first_token_ts is None:
+                        first_token_ts = time.time()
                 if token_piece:
+                    if think_open:
+                        output_text_chunks.append("</think>")
+                        think_open = False
                     output_text_chunks.append(str(token_piece))
                     output_token_count += 1
                     if first_token_ts is None:
@@ -253,12 +296,13 @@ def _send_one_request(
         error_msg = str(exc)
         finish_ts = time.time()
 
-    # Compute derived metrics
+    # Compute derived metrics — all timing captured above, join is post-latency
     ttft = (first_token_ts - submit_ts) if first_token_ts else None
     completion_latency = (finish_ts - submit_ts) if finish_ts else None
     generation_time = (
         (finish_ts - first_token_ts) if (first_token_ts and finish_ts) else None
     )
+    output_text = "".join(output_text_chunks) if record_output else None
 
     return {
         # Identity
@@ -282,12 +326,53 @@ def _send_one_request(
         # Status
         "status": status,
         "error_msg": error_msg,
+        # Optional full output (only present when --record-output is set)
+        "output_text": output_text,
     }
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _get_file_size(path: str | Path | None) -> int | None:
+    """Return current byte size of a file, or None if unavailable."""
+    if path is None:
+        return None
+    try:
+        return Path(path).stat().st_size
+    except OSError:
+        return None
+
+
+def _copy_log_slice(
+    log_path: str | Path | None, start_offset: int | None, dest: Path
+) -> None:
+    """Copy bytes from start_offset to EOF into dest."""
+    if log_path is None or start_offset is None:
+        return
+    try:
+        with open(log_path, "rb") as src, open(dest, "wb") as dst:
+            src.seek(start_offset)
+            while chunk := src.read(65536):
+                dst.write(chunk)
+    except OSError:
+        pass
+
+
+def _read_preemption_counter(endpoint: str) -> float | None:
+    """Read sglang:num_preemption_total from the /metrics Prometheus endpoint."""
+    url = endpoint.rstrip("/") + "/metrics"
+    try:
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            for raw_line in resp:
+                line = raw_line.decode("utf-8", errors="replace")
+                if line.startswith("sglang:num_preemption_total"):
+                    return float(line.split()[-1])
+    except Exception:
+        pass
+    return None
 
 
 def _sleep_until_offset(run_start_ts: float, submit_time_offset: float) -> None:
@@ -337,7 +422,7 @@ def _build_cli() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--model-path",
-        default="deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+        default="Qwen/Qwen3-8B",
         help="Model id passed in OpenAI requests.",
     )
     parser.add_argument(
@@ -351,6 +436,23 @@ def _build_cli() -> argparse.ArgumentParser:
         default=str(DEFAULT_RESULTS_DIR),
         help="Base directory for run output folders.",
     )
+    parser.add_argument(
+        "--record-output",
+        action="store_true",
+        default=False,
+        help="Save the full decoded output text for each request in requests.jsonl.",
+    )
+    parser.add_argument(
+        "--server-log",
+        default=None,
+        help="Path to SGLang server log file. If set, the log slice for this run is copied into the run directory.",
+    )
+    parser.add_argument(
+        "--instant-accept-chat",
+        action="store_true",
+        default=False,
+        help="Record that instant-accept-chat was enabled (metadata only, actual policy is server-side).",
+    )
     return parser
 
 
@@ -362,6 +464,9 @@ def main() -> None:
         model_path=args.model_path,
         timeout=args.timeout,
         base_dir=args.base_dir,
+        record_output=args.record_output,
+        server_log=args.server_log,
+        instant_accept_chat=args.instant_accept_chat,
     )
     print(f"RUN_DIR={run_dir}")
 

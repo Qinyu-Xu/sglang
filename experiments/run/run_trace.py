@@ -72,7 +72,7 @@ def replay_trace(
     base_dir: str | Path = DEFAULT_RESULTS_DIR,
     record_output: bool = False,
     server_log: str | Path | None = None,
-    instant_accept_chat: bool = False,
+    chat_priority: int = 0,
 ) -> Path:
     """
     Replay workload requests against endpoint.
@@ -93,7 +93,7 @@ def replay_trace(
             "model_path": model_path,
             "timeout_seconds": timeout,
             "total_requests": len(requests),
-            "instant_accept_chat": instant_accept_chat,
+            "chat_priority": chat_priority,
         }
     )
 
@@ -107,7 +107,7 @@ def replay_trace(
     def _worker(req: TraceRequest) -> None:
         """Wait until submit time, send request, enqueue result."""
         _sleep_until_offset(run_start_ts, req.submit_time_offset)
-        record = _send_one_request(req, endpoint, model_path, timeout, record_output)
+        record = _send_one_request(req, endpoint, model_path, timeout, record_output, chat_priority)
         result_q.put(record)
 
     # Snapshot server log offset before dispatch
@@ -222,6 +222,7 @@ def _send_one_request(
     model_path: str,
     timeout: int,
     record_output: bool = False,
+    chat_priority: int = 0,
 ) -> dict[str, Any]:
     submit_ts = time.time()
     first_token_ts: float | None = None
@@ -241,6 +242,9 @@ def _send_one_request(
     # Disable chain-of-thought for short/chat requests to avoid wasting KV budget
     if request.prompt_type == "chat":
         payload["chat_template_kwargs"] = {"enable_thinking": False}
+    # Set priority if enabled (nonzero chat_priority activates priority scheduling)
+    if chat_priority != 0:
+        payload["priority"] = chat_priority if request.prompt_type == "chat" else 0
     data = json.dumps(payload).encode("utf-8")
     request_url = endpoint.rstrip("/") + "/v1/chat/completions"
     http_request = urllib.request.Request(
@@ -264,7 +268,7 @@ def _send_one_request(
                     break
                 chunk = json.loads(data_line)
                 delta = chunk.get("choices", [{}])[0].get("delta", {})
-                think_piece = delta.get("reasoning_content")
+                think_piece = delta.get("reasoning_content") or delta.get("reasoning")
                 token_piece = delta.get("content")
                 if think_piece:
                     if not think_open:
@@ -336,6 +340,7 @@ def _send_one_request(
 # ---------------------------------------------------------------------------
 
 
+
 def _get_file_size(path: str | Path | None) -> int | None:
     """Return current byte size of a file, or None if unavailable."""
     if path is None:
@@ -362,13 +367,18 @@ def _copy_log_slice(
 
 
 def _read_preemption_counter(endpoint: str) -> float | None:
-    """Read sglang:num_preemption_total from the /metrics Prometheus endpoint."""
+    """Read sglang:num_retractions_sum from the /metrics Prometheus endpoint.
+
+    sglang:num_retractions is a per-request Histogram of retraction counts;
+    its _sum is the cumulative total retraction events across all completed
+    requests and is the right value to diff before/after a run.
+    """
     url = endpoint.rstrip("/") + "/metrics"
     try:
         with urllib.request.urlopen(url, timeout=5) as resp:
             for raw_line in resp:
                 line = raw_line.decode("utf-8", errors="replace")
-                if line.startswith("sglang:num_preemption_total"):
+                if line.startswith("sglang:num_retractions_sum"):
                     return float(line.split()[-1])
     except Exception:
         pass
@@ -448,10 +458,15 @@ def _build_cli() -> argparse.ArgumentParser:
         help="Path to SGLang server log file. If set, the log slice for this run is copied into the run directory.",
     )
     parser.add_argument(
-        "--instant-accept-chat",
-        action="store_true",
-        default=False,
-        help="Record that instant-accept-chat was enabled (metadata only, actual policy is server-side).",
+        "--chat-priority",
+        type=int,
+        default=0,
+        help=(
+            "Priority value assigned to chat requests. "
+            "0 (default) disables priority scheduling. "
+            "If nonzero, chat requests get this priority and reasoning requests get 0. "
+            "Requires the server to be started with --enable-priority-scheduling."
+        ),
     )
     return parser
 
@@ -466,7 +481,7 @@ def main() -> None:
         base_dir=args.base_dir,
         record_output=args.record_output,
         server_log=args.server_log,
-        instant_accept_chat=args.instant_accept_chat,
+        chat_priority=args.chat_priority,
     )
     print(f"RUN_DIR={run_dir}")
 

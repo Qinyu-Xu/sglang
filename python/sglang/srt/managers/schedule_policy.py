@@ -46,6 +46,17 @@ CLIP_MAX_NEW_TOKENS = int(
     os.environ.get("SGLANG_CLIP_MAX_NEW_TOKENS_ESTIMATION", "4096")
 )
 
+# Separate clip for non-thinking (chat) requests.  Chat responses are
+# typically short, so reserving the same budget as thinking/reasoning
+# requests is overly conservative.  Defaults to CLIP_MAX_NEW_TOKENS so
+# that the behaviour is unchanged unless explicitly configured.
+CLIP_MAX_NEW_TOKENS_CHAT = int(
+    os.environ.get(
+        "SGLANG_CLIP_MAX_NEW_TOKENS_CHAT_ESTIMATION",
+        str(CLIP_MAX_NEW_TOKENS),
+    )
+)
+
 # Threshold for in-batch prefix cache.
 # If a request has a matched prefix length (against existing cache) less than this value,
 # the scheduler runs the in-batch prefix caching check for this request.
@@ -332,11 +343,7 @@ class PrefillAdder:
         rem_chunk_tokens: Optional[int],
         mixed_with_decode_tokens: int = 0,
         priority_scheduling_preemption_threshold: int = 0,
-        instant_accept_chat: bool = False,
-        instant_accept_chat_max_tokens: int = 512,
     ):
-        self.instant_accept_chat = instant_accept_chat
-        self.instant_accept_chat_max_tokens = instant_accept_chat_max_tokens
         self.page_size = page_size
         self.tree_cache = tree_cache
         self.token_to_kv_pool_allocator = token_to_kv_pool_allocator
@@ -377,10 +384,15 @@ class PrefillAdder:
         self.nsa_enable_prefill_cp = is_nsa_enable_prefill_cp()
 
     def _get_running_request_total_token_offset(self, req: Req) -> int:
+        # Use a tighter clip for non-thinking (chat) requests so they don't
+        # over-reserve KV budget.  req.reasoning is set to True when the
+        # request has thinking/reasoning enabled (e.g. DeepSeek-R1, Qwen3
+        # with enable_thinking=True).
+        clip = CLIP_MAX_NEW_TOKENS if req.reasoning else CLIP_MAX_NEW_TOKENS_CHAT
         return (
             min(
                 (req.sampling_params.max_new_tokens - len(req.output_ids)),
-                CLIP_MAX_NEW_TOKENS,
+                clip,
             )
             * self.new_token_ratio
         )
@@ -585,42 +597,10 @@ class PrefillAdder:
         if req.sampling_params.ignore_eos and getattr(self.tree_cache, "disable", True):
             return self.add_one_req_ignore_eos(req, has_chunked_req)
 
-        # Fast path: non-thinking (chat) requests are admitted instantly.
-        # We skip the conservative future-token reservation and only check that
-        # the input itself fits, so short requests never stall behind long ones.
-        if self.instant_accept_chat and req.sampling_params.max_new_tokens <= self.instant_accept_chat_max_tokens:
-            real_input_tokens = self.ceil_paged_tokens(
-                req.extend_input_len - req.host_hit_length
-            )
-            if real_input_tokens >= self.rem_input_tokens and len(self.can_run_list) != 0:
-                return AddReqResult.OTHER
-            if real_input_tokens >= self.rem_total_tokens:
-                return AddReqResult.NO_TOKEN
-            with self._lock_node(req.last_node):
-                input_tokens = self.ceil_paged_tokens(req.extend_input_len)
-                if input_tokens >= self.rem_input_tokens and len(self.can_run_list) != 0:
-                    return AddReqResult.OTHER
-                if input_tokens >= self.rem_total_tokens:
-                    return AddReqResult.NO_TOKEN
-                prefix_len = len(req.prefix_indices)
-                self.can_run_list.append(req)
-                if self.is_hybrid_swa:
-                    req.swa_uuid_for_lock = self.tree_cache.inc_lock_ref(req.last_node)
-                else:
-                    self.tree_cache.inc_lock_ref(req.last_node)
-                # Reserve only input tokens — no speculative output reservation
-                self._update_prefill_budget(prefix_len, input_tokens, 0)
-                logger.info(
-                    "instant-accept-chat: rid=%s input_tokens=%d max_new_tokens=%d admitted without output reservation",
-                    req.rid,
-                    input_tokens,
-                    req.sampling_params.max_new_tokens,
-                )
-            return self.budget_state()
-
+        clip = CLIP_MAX_NEW_TOKENS if req.reasoning else CLIP_MAX_NEW_TOKENS_CHAT
         total_tokens = req.extend_input_len + min(
             max(req.sampling_params.max_new_tokens - len(req.output_ids), 0),
-            CLIP_MAX_NEW_TOKENS,
+            clip,
         )
 
         # adjusting the input_tokens based on host_hit_length and page_size
@@ -666,7 +646,7 @@ class PrefillAdder:
                     input_tokens,
                     min(
                         req.sampling_params.max_new_tokens,
-                        CLIP_MAX_NEW_TOKENS,
+                        clip,
                     ),
                 )
             else:

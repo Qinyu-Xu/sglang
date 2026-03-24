@@ -28,7 +28,7 @@ S_SHORT=0.7        # mean service time for short requests (seconds)
 S_LONG=93        # mean service time for long requests (seconds)
 KV_SHORT=43        # mean KV tokens per short request (prompt + output)
 KV_LONG=4246        # mean KV tokens per long request (prompt + output)
-C=53597             # KV cache capacity in tokens (back-calculated from profile)
+C=45622             # KV cache capacity in tokens (back-calculated from profile)
 
 # ---------------------------------------------------------------------------
 # Defaults (overridable via flags)

@@ -27,7 +27,7 @@ EXPERIMENT_DIR="/scratch/qx774/repos/project/sglang/experiments"
 # ---------------------------------------------------------------------------
 # Defaults
 # ---------------------------------------------------------------------------
-UTILIZATIONS="0.8 1.0 1.2"
+UTILIZATIONS="1.0"
 LONG_FRACTION=0.2
 TOTAL_REQUESTS=500
 SEED=42
@@ -37,6 +37,9 @@ TIMEOUT=900
 COOLDOWN=15
 SCHEDULE_CONSERVATIVENESS=""   # empty = not recorded (read from running server)
 SERVER_LOG=""                 # if set, server log slice is copied per run
+CHAT_PRIORITY=0               # 0 = no priority scheduling; nonzero = chat gets this priority
+CLIP_MAX_NEW_TOKENS=4096      # mirrors SGLANG_CLIP_MAX_NEW_TOKENS_ESTIMATION default
+CLIP_MAX_NEW_TOKENS_CHAT=""   # empty = same as CLIP_MAX_NEW_TOKENS (non-thinking requests)
 
 GENERATE_SCRIPT="${EXPERIMENT_DIR}/workloads/scripts/generate_for_utilization.sh"
 REPLAY_SCRIPT="${EXPERIMENT_DIR}/run/run_trace.py"
@@ -60,6 +63,9 @@ while [[ $# -gt 0 ]]; do
     --trace-dir)                  TRACE_DIR="$2";                shift 2 ;;
     --schedule-conservativeness)  SCHEDULE_CONSERVATIVENESS="$2"; shift 2 ;;
     --server-log)                 SERVER_LOG="$2";                shift 2 ;;
+    --chat-priority)              CHAT_PRIORITY="$2";             shift 2 ;;
+    --clip-max-new-tokens)        CLIP_MAX_NEW_TOKENS="$2";       shift 2 ;;
+    --clip-max-new-tokens-chat)   CLIP_MAX_NEW_TOKENS_CHAT="$2";  shift 2 ;;
     -h|--help)
       echo "Usage: $0 [options]"
       echo ""
@@ -85,19 +91,19 @@ read -ra U_LIST <<< "${UTILIZATIONS}"
 # ---------------------------------------------------------------------------
 # Server health check — fail fast, do not start server
 # ---------------------------------------------------------------------------
-echo "Checking server at ${ENDPOINT} ..."
-if curl -sf "${ENDPOINT}/health_generate" > /dev/null 2>&1; then
-  echo "  Server ready (health_generate OK)"
-elif curl -sf "${ENDPOINT}/v1/models" > /dev/null 2>&1; then
-  echo "  Server reachable (v1/models OK)"
-else
-  echo "ERROR: Server not reachable at ${ENDPOINT}"
-  echo "  Start SGLang first:"
-  echo "    python -m sglang.launch_server \\"
-  echo "      --model-path ${MODEL_PATH} \\"
-  echo "      --port 30000"
-  exit 1
-fi
+# echo "Checking server at ${ENDPOINT} ..."
+# if curl -sf "${ENDPOINT}/health_generate" > /dev/null 2>&1; then
+#   echo "  Server ready (health_generate OK)"
+# elif curl -sf "${ENDPOINT}/v1/models" > /dev/null 2>&1; then
+#   echo "  Server reachable (v1/models OK)"
+# else
+#   echo "ERROR: Server not reachable at ${ENDPOINT}"
+#   echo "  Start SGLang first:"
+#   echo "    python -m sglang.launch_server \\"
+#   echo "      --model-path ${MODEL_PATH} \\"
+#   echo "      --port 30000"
+#   exit 1
+# fi
 
 mkdir -p "${TRACE_DIR}" "${RESULTS_BASE}"
 
@@ -120,6 +126,9 @@ echo "  Model:                      ${MODEL_PATH}"
 echo "  Timeout:                    ${TIMEOUT}s / request"
 echo "  Cooldown:                   ${COOLDOWN}s between runs"
 echo "  Schedule conservativeness:  ${SCHEDULE_CONSERVATIVENESS:-"(server default)"}"
+echo "  Chat priority:              ${CHAT_PRIORITY} (0 = disabled)"
+echo "  Clip max new tokens:        ${CLIP_MAX_NEW_TOKENS}"
+echo "  Clip max new tokens (chat): ${CLIP_MAX_NEW_TOKENS_CHAT:-"(same as clip-max-new-tokens)"}"
 echo "  Trace dir:                  ${TRACE_DIR}"
 echo "  Results dir:                ${SWEEP_DIR}"
 echo "=========================================="
@@ -166,6 +175,7 @@ for U in "${U_LIST[@]}"; do
   echo "  Running trace ..."
   REPLAY_EXTRA_ARGS=()
   [[ -n "${SERVER_LOG}" ]] && REPLAY_EXTRA_ARGS+=(--server-log "${SERVER_LOG}")
+  [[ "${CHAT_PRIORITY}" -ne 0 ]] && REPLAY_EXTRA_ARGS+=(--chat-priority "${CHAT_PRIORITY}")
 
   RUN_OUTPUT=$(python "${REPLAY_SCRIPT}" \
     --workload-spec "${TRACE_FILE}" \
@@ -191,7 +201,9 @@ for U in "${U_LIST[@]}"; do
 
   [[ "${FIRST_ENTRY}" == true ]] && FIRST_ENTRY=false || echo "," >> "${INDEX_FILE}"
   CONSERV_JSON="${SCHEDULE_CONSERVATIVENESS:-null}"
-  echo "  {\"u\": ${U}, \"trace\": \"${TRACE_FILE}\", \"run_dir\": \"${RUN_DIR:-unknown}\", \"schedule_conservativeness\": ${CONSERV_JSON}, \"status\": \"ok\"}" >> "${INDEX_FILE}"
+  CLIP_CHAT_JSON="${CLIP_MAX_NEW_TOKENS_CHAT:-${CLIP_MAX_NEW_TOKENS}}"
+  echo "  {\"u\": ${U}, \"trace\": \"${TRACE_FILE}\", \"run_dir\": \"${RUN_DIR:-unknown}\", \"schedule_conservativeness\": ${CONSERV_JSON}, \"chat_priority\": ${CHAT_PRIORITY}, \"clip_max_new_tokens\": ${CLIP_MAX_NEW_TOKENS}, \"clip_max_new_tokens_chat\": ${CLIP_CHAT_JSON}, \"status\": \"ok\"}" >> "${INDEX_FILE}"
+  unset CONSERV_JSON CLIP_CHAT_JSON
 
   # Cooldown (skip after last run)
   if [[ "${CURRENT}" -lt "${TOTAL}" ]]; then

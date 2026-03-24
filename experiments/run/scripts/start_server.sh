@@ -30,7 +30,9 @@ PORT="${PORT:-$((30000 + UID % 10000))}"
 MEM_FRACTION=0.5
 DTYPE="auto"
 ENABLE_RADIX_CACHE=false
-INSTANT_ACCEPT_CHAT=false
+ENABLE_PRIORITY_SCHEDULING=false
+SKIP_LONG_ON_NO_TOKEN=false
+MAX_CONCURRENT_CHAT=0
 
 # Future token estimation controls
 # --schedule-conservativeness: scales init_new_token_ratio (1.0 = default, >1 = more conservative)
@@ -61,8 +63,10 @@ while [[ $# -gt 0 ]]; do
     --mem-fraction)      MEM_FRACTION="$2";      shift 2 ;;
     --dtype)             DTYPE="$2";             shift 2 ;;
     --enable-radix-cache)           ENABLE_RADIX_CACHE=true;             shift ;;
+    --enable-priority-scheduling)   ENABLE_PRIORITY_SCHEDULING=true;     shift ;;
+    --skip-long-on-no-token)        SKIP_LONG_ON_NO_TOKEN=true;          shift ;;
+    --max-concurrent-chat)          MAX_CONCURRENT_CHAT="$2";            shift 2 ;;
     --schedule-conservativeness)    SCHEDULE_CONSERVATIVENESS="$2";      shift 2 ;;
-    --instant-accept-chat)          INSTANT_ACCEPT_CHAT=true;            shift 1 ;;
     --init-token-ratio)             INIT_NEW_TOKEN_RATIO="$2";           shift 2 ;;
     --min-token-ratio-factor)       MIN_NEW_TOKEN_RATIO_FACTOR="$2";     shift 2 ;;
     --token-ratio-decay-steps)      NEW_TOKEN_RATIO_DECAY_STEPS="$2";    shift 2 ;;
@@ -80,6 +84,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --mem-fraction      FLOAT GPU memory fraction for KV cache (default: 0.5)"
       echo "  --dtype             STR   Model dtype (default: auto)"
       echo "  --enable-radix-cache               Enable prefix/radix cache (default: disabled)"
+  echo "  --enable-priority-scheduling       Enable priority scheduling (default: disabled)"
       echo "  --schedule-conservativeness FLOAT  Scale init_new_token_ratio (default: 1.0)"
       echo "  --init-token-ratio          FLOAT  SGLANG_INIT_NEW_TOKEN_RATIO (default: 0.7)"
       echo "  --min-token-ratio-factor    FLOAT  SGLANG_MIN_NEW_TOKEN_RATIO_FACTOR (default: 0.14)"
@@ -141,6 +146,7 @@ echo "  Model:         ${MODEL_PATH}"
 echo "  Port:          ${PORT}"
 echo "  Mem fraction:  ${MEM_FRACTION}"
 echo "  Radix cache:              ${ENABLE_RADIX_CACHE}"
+echo "  Priority scheduling:      ${ENABLE_PRIORITY_SCHEDULING}"
 echo "  Schedule conservativeness: ${SCHEDULE_CONSERVATIVENESS}"
 [[ -n "${INIT_NEW_TOKEN_RATIO}" ]]          && echo "  Init token ratio:          ${INIT_NEW_TOKEN_RATIO}"
 [[ -n "${MIN_NEW_TOKEN_RATIO_FACTOR}" ]]    && echo "  Min token ratio factor:    ${MIN_NEW_TOKEN_RATIO_FACTOR}"
@@ -158,8 +164,16 @@ echo ""
 EXTRA_ARGS=()
 [[ "${ENABLE_RADIX_CACHE}" == false ]] && EXTRA_ARGS+=(--disable-radix-cache)
 EXTRA_ARGS+=(--schedule-conservativeness "${SCHEDULE_CONSERVATIVENESS}")
-[[ "${INSTANT_ACCEPT_CHAT}" == true ]] && EXTRA_ARGS+=(--instant-accept-chat)
+[[ "${ENABLE_PRIORITY_SCHEDULING}" == true ]] && EXTRA_ARGS+=(--enable-priority-scheduling)
+[[ "${SKIP_LONG_ON_NO_TOKEN}" == true ]]      && EXTRA_ARGS+=(--skip-long-on-no-token)
+[[ "${MAX_CONCURRENT_CHAT}" -gt 0 ]] 2>/dev/null && EXTRA_ARGS+=(--max-concurrent-chat "${MAX_CONCURRENT_CHAT}")
 EXTRA_ARGS+=(--enable-metrics)
+
+# Auto-set reasoning parser for known model families so req.reasoning is
+# populated correctly (needed for --skip-long-on-no-token scheduling).
+if [[ "${MODEL_PATH,,}" == *"qwen3"* ]]; then
+  EXTRA_ARGS+=(--reasoning-parser qwen3)
+fi
 
 setsid "${PYTHON_BIN}" -m sglang.launch_server \
   --model-path "${MODEL_PATH}" \

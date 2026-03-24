@@ -494,6 +494,8 @@ class Scheduler(
         )
         # Enable preemption for priority scheduling.
         self.try_preemption = self.enable_priority_scheduling
+        self.skip_long_on_no_token = server_args.skip_long_on_no_token
+        self.max_concurrent_chat = server_args.max_concurrent_chat
         self.init_new_token_ratio = min(
             envs.SGLANG_INIT_NEW_TOKEN_RATIO.get()
             * server_args.schedule_conservativeness,
@@ -1777,8 +1779,6 @@ class Scheduler(
             self.chunked_prefill_size,
             running_bs if self.is_mixed_chunk else 0,
             self.priority_scheduling_preemption_threshold,
-            self.server_args.instant_accept_chat,
-            self.server_args.instant_accept_chat_max_tokens,
         )
 
         if self.chunked_req is not None:
@@ -1810,14 +1810,28 @@ class Scheduler(
 
             if self.running_batch.batch_is_full:
                 if not self.try_preemption:
-                    break
-                if not adder.preempt_to_schedule(req, self.server_args):
+                    if self.skip_long_on_no_token and not req.reasoning:
+                        pass  # let chat requests through to try add_one_req
+                    else:
+                        break
+                elif not adder.preempt_to_schedule(req, self.server_args):
                     break
 
             if self.enable_hicache_storage:
                 prefetch_done = self.tree_cache.check_prefetch_progress(req.rid)
                 if not prefetch_done:
                     # skip staging requests that are ongoing prefetch
+                    continue
+
+            # Cap concurrent chat requests to avoid compute saturation.
+            if (
+                self.max_concurrent_chat > 0
+                and not req.reasoning
+            ):
+                current_chat = sum(
+                    1 for r in self.running_batch.reqs if not r.reasoning
+                ) + sum(1 for r in adder.can_run_list if not r.reasoning)
+                if current_chat >= self.max_concurrent_chat:
                     continue
 
             req.init_next_round_input(self.tree_cache)
@@ -1836,14 +1850,12 @@ class Scheduler(
                         ) > 0 or (not self.running_batch.is_empty())
                     else:
                         self.running_batch.batch_is_full = True
-                    # With instant-accept-chat: skip over blocked long requests so short
-                    # requests queued behind them are not head-of-line blocked.
-                    if (
-                        self.server_args.instant_accept_chat
-                        and req.sampling_params.max_new_tokens
-                        > self.server_args.instant_accept_chat_max_tokens
-                    ):
+
+                    if self.skip_long_on_no_token and req.reasoning:
+                        # Long request doesn't fit — keep scanning for chat requests
+                        # that have a smaller token footprint and may still fit.
                         continue
+
                 break
 
         # Update waiting queue

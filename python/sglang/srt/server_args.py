@@ -293,10 +293,11 @@ class ServerArgs:
     enable_priority_scheduling: bool = False
     abort_on_priority_when_disabled: bool = False
     schedule_low_priority_values_first: bool = False
+    skip_long_on_no_token: bool = False
+    max_concurrent_chat: int = 0  # 0 = unlimited
     priority_scheduling_preemption_threshold: int = 10
     schedule_conservativeness: float = 1.0
-    instant_accept_chat: bool = False
-    instant_accept_chat_max_tokens: int = 512
+
     page_size: Optional[int] = None
     hybrid_kvcache_ratio: Optional[float] = None
     swa_full_tokens_ratio: float = 0.8
@@ -2432,6 +2433,18 @@ class ServerArgs:
             help="If specified with --enable-priority-scheduling, the scheduler will schedule requests with lower priority integer values first.",
         )
         parser.add_argument(
+            "--skip-long-on-no-token",
+            action="store_true",
+            default=ServerArgs.skip_long_on_no_token,
+            help="When a reasoning request cannot be admitted due to insufficient KV budget, continue scanning for chat requests that may still fit.",
+        )
+        parser.add_argument(
+            "--max-concurrent-chat",
+            type=int,
+            default=ServerArgs.max_concurrent_chat,
+            help="Maximum number of concurrent non-reasoning (chat) requests. 0 = unlimited.",
+        )
+        parser.add_argument(
             "--priority-scheduling-preemption-threshold",
             type=int,
             default=ServerArgs.priority_scheduling_preemption_threshold,
@@ -2443,18 +2456,7 @@ class ServerArgs:
             default=ServerArgs.schedule_conservativeness,
             help="How conservative the schedule policy is. A larger value means more conservative scheduling. Use a larger value if you see requests being retracted frequently.",
         )
-        parser.add_argument(
-            "--instant-accept-chat",
-            action="store_true",
-            default=ServerArgs.instant_accept_chat,
-            help="Admit non-thinking (chat) requests immediately without future-token budget checks.",
-        )
-        parser.add_argument(
-            "--instant-accept-chat-max-tokens",
-            type=int,
-            default=ServerArgs.instant_accept_chat_max_tokens,
-            help="Max new tokens threshold to classify a request as chat for instant-accept (default: 512).",
-        )
+
         parser.add_argument(
             "--page-size",
             type=int,
